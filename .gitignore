@@ -1,0 +1,22 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+celerybeat-schedule
+*.sqlite3
+
+# Node
+node_modules/
+/dashboard/node_modules/
+/dashboard/build/
+
+# Docker
+db_data/
+
+# VS Code
+.vscode/
+
+# Misc
+.DS_Store

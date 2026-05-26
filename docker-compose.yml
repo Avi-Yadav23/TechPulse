@@ -1,0 +1,72 @@
+﻿version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: techpulse
+      POSTGRES_PASSWORD: techpulse
+      POSTGRES_DB: techpulse
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+
+  redis:
+    image: redis:7
+    ports:
+      - '6379:6379'
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DATABASE_URL: postgresql://techpulse:techpulse@db:5432/techpulse
+      REDIS_URL: redis://redis:6379/0
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+    ports:
+      - '8000:8000'
+    depends_on:
+      - db
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A scraper.tasks.celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql://techpulse:techpulse@db:5432/techpulse
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A scraper.tasks.celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler --schedule /app/celerybeat-schedule
+    environment:
+      DATABASE_URL: postgresql://techpulse:techpulse@db:5432/techpulse
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - REACT_APP_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
